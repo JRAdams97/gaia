@@ -1,13 +1,15 @@
 package com.jradams.gaia.component;
 
 import com.badlogic.ashley.core.Component;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 @Getter
-@RequiredArgsConstructor
+@Setter
+@AllArgsConstructor
 public class PositionComponent implements Component {
 
-    private final float x;
-    private final float y;
+    private float x;
+    private float y;
 }

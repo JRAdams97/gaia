@@ -10,10 +10,13 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.jradams.gaia.component.MaterialComponent;
+import com.jradams.gaia.component.MovementComponent;
 import com.jradams.gaia.component.PlayerComponent;
 import com.jradams.gaia.component.PositionComponent;
 import com.jradams.gaia.component.TextureComponent;
 import com.jradams.gaia.system.MaterialRenderSystem;
+import com.jradams.gaia.system.MovementSystem;
+import com.jradams.gaia.system.RenderSystem;
 import com.jradams.gaia.util.MaterialType;
 import com.jradams.gaia.util.MathUtils;
 
@@ -23,8 +26,8 @@ import java.util.List;
 
 public class MainScreen extends ScreenAdapter {
 
-    private static final int ENV_HEIGHT = 24;
-    private static final int ENV_WIDTH = 60;
+    public static final int ENV_HEIGHT = 24;
+    public static final int ENV_WIDTH = 60;
 
     private final OrthographicCamera cam;
     private final SecureRandom random = new SecureRandom();
@@ -44,6 +47,8 @@ public class MainScreen extends ScreenAdapter {
 
         engine = new PooledEngine();
         engine.addSystem(new MaterialRenderSystem(new TextureAtlas("materials.atlas"), cam));
+        engine.addSystem(new RenderSystem(cam));
+        engine.addSystem(new MovementSystem());
 
         for (Entity e : buildEnvironment()) {
             engine.addEntity(e);
@@ -62,8 +67,11 @@ public class MainScreen extends ScreenAdapter {
                 Gdx.files.internal("player.png")), 0, 0, 32, 32));
         e.add(textureComp);
 
-        PositionComponent posComp = new PositionComponent((float) 1920 / 2 - 32, (float) 1080 / 2 - 32);
+        PositionComponent posComp = new PositionComponent((float) 1920 / 2 - 32, (ENV_HEIGHT * 32));
         e.add(posComp);
+
+        MovementComponent movementComp = new MovementComponent(32);
+        e.add(movementComp);
 
         return e;
     }
