@@ -9,13 +9,22 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.PolygonShape;
+import com.badlogic.gdx.physics.box2d.World;
+import com.jradams.gaia.component.BodyComponent;
 import com.jradams.gaia.component.MaterialComponent;
 import com.jradams.gaia.component.MovementComponent;
 import com.jradams.gaia.component.PlayerComponent;
 import com.jradams.gaia.component.PositionComponent;
 import com.jradams.gaia.component.TextureComponent;
+import com.jradams.gaia.system.CollisionSystem;
 import com.jradams.gaia.system.MaterialRenderSystem;
 import com.jradams.gaia.system.MovementSystem;
+import com.jradams.gaia.system.PhysicsDebugRenderSystem;
 import com.jradams.gaia.system.RenderSystem;
 import com.jradams.gaia.util.MaterialType;
 import com.jradams.gaia.util.MathUtils;
@@ -31,6 +40,7 @@ public class MainScreen extends ScreenAdapter {
 
     private final OrthographicCamera cam;
     private final SecureRandom random = new SecureRandom();
+    private final World world = new World(new Vector2(0f, 0f), true);
 
     private boolean isInitialized = false;
     private PooledEngine engine;
@@ -49,11 +59,14 @@ public class MainScreen extends ScreenAdapter {
         engine.addSystem(new MaterialRenderSystem(new TextureAtlas("materials.atlas"), cam));
         engine.addSystem(new RenderSystem(cam));
         engine.addSystem(new MovementSystem());
+        engine.addSystem(new PhysicsDebugRenderSystem(world, cam));
+        engine.addSystem(new CollisionSystem(engine, world));
 
         for (Entity e : buildEnvironment()) {
             engine.addEntity(e);
         }
 
+        engine.addEntity(buildShop());
         engine.addEntity(buildPlayer());
 
         isInitialized = true;
@@ -72,6 +85,23 @@ public class MainScreen extends ScreenAdapter {
 
         MovementComponent movementComp = new MovementComponent(32);
         e.add(movementComp);
+
+        BodyComponent bodyComp = new BodyComponent(createBox2dBody(32, 32, false));
+        bodyComp.getBody().setUserData(e);
+        e.add(bodyComp);
+
+        return e;
+    }
+
+    private Entity buildShop() {
+        Entity e = engine.createEntity();
+
+        TextureComponent textureComp = new TextureComponent(new TextureRegion(new Texture(
+                Gdx.files.internal("shop.png")), 0, 0, 128, 96));
+        e.add(textureComp);
+
+        PositionComponent posComp = new PositionComponent((float) 2880 / 2 - 128, (ENV_HEIGHT * 32));
+        e.add(posComp);
 
         return e;
     }
@@ -97,8 +127,15 @@ public class MainScreen extends ScreenAdapter {
 
                 e.add(new TextureComponent(new TextureRegion()));
 
-                PositionComponent posComp = new PositionComponent((float) j * 32, (float) i * 32);
+                float xPos = (float) j * 32;
+                float yPos = (float) i * 32;
+
+                PositionComponent posComp = new PositionComponent(xPos, yPos);
                 e.add(posComp);
+
+                BodyComponent bodyComp = new BodyComponent(createBox2dBody(xPos + 16, yPos + 16, true));
+                bodyComp.getBody().setUserData(e);
+                e.add(bodyComp);
 
                 entities.add(e);
             }
@@ -139,5 +176,33 @@ public class MainScreen extends ScreenAdapter {
         } else {
             return MaterialType.DIRT;
         }
+    }
+
+    private Body createBox2dBody(float x, float y, boolean isStatic) {
+        BodyDef bodyDef = new BodyDef();
+
+        if (isStatic) {
+            bodyDef.type = BodyDef.BodyType.StaticBody;
+        } else {
+            bodyDef.type = BodyDef.BodyType.DynamicBody;
+        }
+
+        bodyDef.position.set(x, y);
+        bodyDef.fixedRotation = true;
+
+        Body body = world.createBody(bodyDef);
+
+        PolygonShape bodyShape = new PolygonShape();
+        bodyShape.setAsBox(4, 4);
+
+        FixtureDef fixtureDef = new FixtureDef();
+        fixtureDef.shape = bodyShape;
+        fixtureDef.density = 1f;
+
+        body.createFixture(fixtureDef);
+
+        bodyShape.dispose();
+
+        return body;
     }
 }
