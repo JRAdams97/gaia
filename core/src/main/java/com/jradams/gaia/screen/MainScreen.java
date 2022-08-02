@@ -4,9 +4,11 @@ import com.badlogic.ashley.core.Entity;
 import com.badlogic.ashley.core.PooledEngine;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
@@ -16,12 +18,14 @@ import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.jradams.gaia.component.BodyComponent;
+import com.jradams.gaia.component.HudNumberComponent;
 import com.jradams.gaia.component.MaterialComponent;
 import com.jradams.gaia.component.MovementComponent;
 import com.jradams.gaia.component.PlayerComponent;
 import com.jradams.gaia.component.PositionComponent;
 import com.jradams.gaia.component.TextureComponent;
 import com.jradams.gaia.system.CollisionSystem;
+import com.jradams.gaia.system.HudRenderSystem;
 import com.jradams.gaia.system.MaterialRenderSystem;
 import com.jradams.gaia.system.MovementSystem;
 import com.jradams.gaia.system.PhysicsDebugRenderSystem;
@@ -61,6 +65,7 @@ public class MainScreen extends ScreenAdapter {
         engine.addSystem(new MovementSystem());
         engine.addSystem(new PhysicsDebugRenderSystem(world, cam));
         engine.addSystem(new CollisionSystem(engine, world));
+        engine.addSystem(new HudRenderSystem(cam));
 
         for (Entity e : buildEnvironment()) {
             engine.addEntity(e);
@@ -69,7 +74,20 @@ public class MainScreen extends ScreenAdapter {
         engine.addEntity(buildShop());
         engine.addEntity(buildPlayer());
 
+        for (Entity e : buildHud()) {
+            engine.addEntity(e);
+        }
+
         isInitialized = true;
+    }
+
+    private List<Entity> buildHud() {
+        List<Entity> entities = new ArrayList<>();
+
+        entities.add(createHudElement("Score", 0, 32, 1080 - 32f));
+        entities.add(createHudElement("Fuel", 100, 32, 1080 - 64f));
+
+        return entities;
     }
 
     private Entity buildPlayer() {
@@ -117,11 +135,15 @@ public class MainScreen extends ScreenAdapter {
                     e.add(MaterialComponent.builder()
                             .hp(1)
                             .type(MaterialType.GRASS)
+                            .score(0)
                             .build());
                 } else {
+                    MaterialType type = determineMaterial(random.nextInt(100));
+
                     e.add(MaterialComponent.builder()
                             .hp(1)
-                            .type(determineMaterial(random.nextInt(100)))
+                            .type(type)
+                            .score(determineMaterialScore(type))
                             .build());
                 }
 
@@ -178,6 +200,18 @@ public class MainScreen extends ScreenAdapter {
         }
     }
 
+    private int determineMaterialScore(final MaterialType type) {
+        return switch (type) {
+            case AMETHYST, SAPPHIRE, RUBY -> 2500;
+            case GOLD -> 2000;
+            case COPPER -> 500;
+            case COAL -> 150;
+            case CLAY -> 2;
+            case DIRT, STONE -> 1;
+            default -> 0;
+        };
+    }
+
     private Body createBox2dBody(float x, float y, boolean isStatic) {
         BodyDef bodyDef = new BodyDef();
 
@@ -204,5 +238,17 @@ public class MainScreen extends ScreenAdapter {
         bodyShape.dispose();
 
         return body;
+    }
+
+    private Entity createHudElement(CharSequence label, int initialValue, float xPos, float yPos) {
+        Entity e = engine.createEntity();
+
+        BitmapFont font = new BitmapFont();
+        font.setColor(Color.WHITE);
+
+        e.add(new HudNumberComponent(new BitmapFont(), label, initialValue));
+        e.add(new PositionComponent(xPos, yPos));
+
+        return e;
     }
 }
